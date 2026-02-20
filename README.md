@@ -1,6 +1,8 @@
 ComfyUI-RT-LTX2-RareTools
 Experimental ComfyUI nodes.
 
+Tutorial @ https://www.youtube.com/@raretutor
+
 ComfyUI custom nodes for LTXV2 model.
 
 Gemma Models
