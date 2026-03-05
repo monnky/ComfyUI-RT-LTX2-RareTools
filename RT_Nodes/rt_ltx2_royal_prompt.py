@@ -20,20 +20,25 @@ except ImportError:
 
 class RT_LTX2_RoyalPrompt:
     
-    SYSTEM_PROMPT = """You are a video scene describer for LTX-2. 
+    # ── SYSTEM PROMPT: Updated for 20-Second Long Shots ──────────────────────
+    SYSTEM_PROMPT = """You are a cinematic video scene describer for LTX-2, specializing in long, continuous 20-second shots. 
 
 INSTRUCTIONS:
-1. ANALYZE the image for subject positions, lighting, and layout.
-2. INTEGRATE the user's text strictly. 
-3. NO INTERNAL STATES: Describe physical cues (e.g., 'smiling warmly') instead of internal feelings.
-4. DIALOGUE & SPEAKER NAMES (CRITICAL): 
-   - If the user provides a conversation between multiple characters, you MUST preserve who is speaking.
+1. ANALYZE the image for subject positions, lighting, and layout. Use the user's text strictly.
+2. LONG SHOT STRUCTURE (Write as ONE flowing paragraph):
+   - Scene Header: Establish place and time (e.g., EXT. EMPTY STREET - DAWN).
+   - Atmosphere: Describe tone, lighting, and weather.
+   - Camera & Blocking: Start with a close-up to establish detail, then slowly pull out or track. Keep motion smooth. AVOID abrupt cuts, reframing, or fast zooms.
+   - Pacing: Order actions sequentially so the scene has room to breathe. 
+3. SOFT CLOSING ACTION: You MUST end the visual description with a lingering, soft motion (e.g., 'the character takes a beat', 'the camera slowly drifts upward', 'the wind continues to blow') so the video does not end abruptly.
+4. NO INTERNAL STATES: Describe physical cues (e.g., 'smiling warmly') instead of internal feelings.
+5. DIALOGUE & SPEAKER NAMES: 
+   - If the user provides a conversation between multiple characters, preserve who is speaking.
    - Format it like a screenplay within the prompt. Example:
      Reporter (smiling): "How do you feel?"
      Punch (softly): "I just wanted snacks."
-   - DO NOT remove the character names. The video model must know whose lips are moving.
-5. AUDIO: End your prompt with an ambient sound tag. Example: [AMBIENT: jungle sounds, gentle breeze]
-6. Do not write 'Here is the prompt', '[SCENE START]', or '[SCENE END]'."""
+6. AUDIO: End your prompt with an ambient sound tag. Example: [AMBIENT: jungle sounds, gentle breeze]
+7. Do not write 'Here is the prompt', '[SCENE START]', or '[SCENE END]'."""
 
     @staticmethod
     def get_gguf_models():
@@ -162,7 +167,8 @@ INSTRUCTIONS:
             f"USER REQUEST:\n"
             f"'{user_input}'\n\n"
             f"Use the image as a visual reference for positions and colors. "
-            f"Write the final video prompt, ensuring you keep the exact character names and dialogue formatting if they are conversing."
+            f"Write the final video prompt for a long 20-second cinematic shot. "
+            f"If the user included dialogue, format it properly inside the prompt, and end with an [AMBIENT: ...] tag."
         )
         
         user_content_block = [
@@ -202,18 +208,10 @@ INSTRUCTIONS:
 
         return (final_result, final_result, frame_count)
 
-class RT_UnloadModel:
-    @classmethod
-    def INPUT_TYPES(s): return {"required": {"architect": ("RareTutor",)}}
-    RETURN_TYPES = (); FUNCTION = "unload"; CATEGORY = "RareTutor"; OUTPUT_NODE = True
-    def unload(self, architect): return {}
-
 NODE_CLASS_MAPPINGS = {
-    "RT_LTX2_RoyalPrompt": RT_LTX2_RoyalPrompt,
-    "RT_UnloadModel": RT_UnloadModel,
+    "RT_LTX2_RoyalPrompt": RT_LTX2_RoyalPrompt
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "RT_LTX2_RoyalPrompt": "RT-LTX-2 Royal Prompt by RareTutor",
-    "RT_UnloadModel": "RT Unload Model",
+    "RT_LTX2_RoyalPrompt": "RT-LTX-2 Royal Prompt by RareTutor"
 }
