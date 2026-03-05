@@ -20,16 +20,20 @@ except ImportError:
 
 class RT_LTX2_RoyalPrompt:
     
-    # ── SYSTEM PROMPT: Style Priority ───────────────────────────────────────
     SYSTEM_PROMPT = """You are a video scene describer for LTX-2. 
 
 INSTRUCTIONS:
 1. ANALYZE the image for subject positions, lighting, and layout.
-2. INTEGRATE the user's text instructions STRICTLY. 
-   - If the user says "Pixar-style", "Anime", or "Cinematic", you MUST write in that style, even if the image looks different.
-   - If the user describes a specific action, make that happen.
-3. OUTPUT: A single, rich paragraph merging the visual details of the image with the STYLE and ACTION of the text.
-4. AUDIO: Generate an [AMBIENT: ...] tag suitable for the scene."""
+2. INTEGRATE the user's text strictly. 
+3. NO INTERNAL STATES: Describe physical cues (e.g., 'smiling warmly') instead of internal feelings.
+4. DIALOGUE & SPEAKER NAMES (CRITICAL): 
+   - If the user provides a conversation between multiple characters, you MUST preserve who is speaking.
+   - Format it like a screenplay within the prompt. Example:
+     Reporter (smiling): "How do you feel?"
+     Punch (softly): "I just wanted snacks."
+   - DO NOT remove the character names. The video model must know whose lips are moving.
+5. AUDIO: End your prompt with an ambient sound tag. Example: [AMBIENT: jungle sounds, gentle breeze]
+6. Do not write 'Here is the prompt', '[SCENE START]', or '[SCENE END]'."""
 
     @staticmethod
     def get_gguf_models():
@@ -52,13 +56,11 @@ INSTRUCTIONS:
                 "image": ("IMAGE",),
                 "llm_model": (valid_ggufs, {"default": valid_ggufs[0]}), 
                 "vision_model": (valid_ggufs, {"default": valid_ggufs[0]}),
-                
                 "user_input": ("STRING", {
                     "multiline": True,
-                    "default": "Pixar-style animation: the mouse stands...",
+                    "default": "Pixar-style animation...",
                     "placeholder": "Describe style, action, and dialogue..."
                 }),
-                
                 "max_tokens": (["256", "512", "800", "1024"], {"default": "512"}),
                 "creativity": (["0.7 - Literal", "0.9 - Balanced", "1.1 - Artistic"], {"default": "0.9 - Balanced"}),
                 "seed": ("INT", {"default": -1, "min": -1, "max": 0xffffffffffffffff}),
@@ -131,26 +133,19 @@ INSTRUCTIONS:
         gc.collect()
         torch.cuda.empty_cache()
 
-    def _extract_dialogue(self, user_input):
-        matches = re.findall(r'"([^"]*)"', user_input)
-        if not matches:
-            matches = re.findall(r"'([^']*)'", user_input)
-        return matches[0] if matches else None
-
     def _clean_output(self, text):
         patterns = [
             r"Okay, here's a description.*?:",
             r"Here's a description.*?:",
             r"Here is the prompt.*?:",
             r"Sure, here is.*?:",
-            r"REAL TASK:.*", r"USER:.*", r"ACTION:.*", r"RULES:.*", r"\[INSTRUCTION:\]"
+            r"REAL TASK:.*", r"USER:.*", r"ACTION:.*", r"RULES:.*", r"\[INSTRUCTION:\]",
+            r"\[SCENE START\]", r"\[SCENE END\]"
         ]
         
         for p in patterns:
             text = re.sub(p, "", text, flags=re.IGNORECASE | re.DOTALL)
             
-        text = re.sub(r"\[DIALOGUE:.*?\]", "", text, flags=re.IGNORECASE)
-
         text = text.strip()
         if text.startswith('"') and text.endswith('"'):
             text = text[1:-1]
@@ -163,14 +158,11 @@ INSTRUCTIONS:
         base64_image = self._tensor_to_base64(image)
         token_val = int(max_tokens.split(" - ")[0]) if " - " in max_tokens else int(max_tokens)
         
-        required_dialogue = self._extract_dialogue(user_input)
-        
-        # ── MERGED PROMPT: Explicitly tells AI to use User's Style ──────────
         final_prompt = (
-            f"Here is the user's requested STYLE and ACTION:\n"
+            f"USER REQUEST:\n"
             f"'{user_input}'\n\n"
-            f"Use the image below as a visual reference for positions and colors, but MUST maintain the STYLE described above (e.g. Pixar, Cinematic, etc.). "
-            f"Write the final video prompt."
+            f"Use the image as a visual reference for positions and colors. "
+            f"Write the final video prompt, ensuring you keep the exact character names and dialogue formatting if they are conversing."
         )
         
         user_content_block = [
@@ -199,19 +191,7 @@ INSTRUCTIONS:
             )
             
             raw_result = response['choices'][0]['message']['content'].strip()
-            
-            cleaned_result = self._clean_output(raw_result)
-            
-            # Smart Ambient Fallback
-            if "[AMBIENT:" in raw_result:
-                pass 
-            else:
-                cleaned_result += "\n\n[AMBIENT: cinematic atmosphere]"
-
-            if required_dialogue:
-                final_result = f"{cleaned_result} [DIALOGUE: \"{required_dialogue}\"]"
-            else:
-                final_result = cleaned_result
+            final_result = self._clean_output(raw_result)
 
         except Exception as e:
             final_result = f"Error: {e}"
