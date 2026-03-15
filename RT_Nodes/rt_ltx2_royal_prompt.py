@@ -20,32 +20,24 @@ except ImportError:
 
 class RT_LTX2_RoyalPrompt:
     
-    # ── SYSTEM PROMPT: Hyper-Literal LTX-2 Optimization ─────────────
-    SYSTEM_PROMPT = """You are an elite video prompt engineer for LTX-2.3. LTX-2 is a fragile AI model that hallucinates if given poetic or complex instructions. 
+    # ── SYSTEM PROMPT: Rich Micro-Detail Optimization ─────────────
+    SYSTEM_PROMPT = """You are an elite video prompt engineer for LTX-2.3. LTX-2 requires highly detailed, deeply descriptive, but physically grounded instructions.
 
 CRITICAL FORMATTING RULES:
-1. STYLE TAG FIRST: The absolute first line MUST be: [Style : <3D Animation OR Live-Action>, <texture>, <lighting>].
+1. STYLE TAG FIRST: The absolute first line MUST be: [Style : <3D Animation OR Live-Action OR 2D Anime>, <texture>, <lighting>].
 2. NO CHATTY FILLER: NEVER start with "Here is the prompt". Start instantly with the [Style : ...] tag.
 3. AMBIENT TAG: The final line MUST be the [AMBIENT: ...] audio tag.
 
-CRITICAL LTX-2 PHYSICS RULES (PREVENT NONSENSE):
-- BE ULTRA-LITERAL: Do not write "he tells a story". Write "his mouth opens and closes, his hand raises". 
-- KEEP MOTION SIMPLE: Limit the scene to 1 or 2 basic, slow movements. (e.g., "The man walks forward. The boy looks up.")
-- NO POETRY: Do not use words like "magical," "whimsical," "epic," or "passionate." Describe literal visual data.
-- NO OVERLAPPING ACTION: Do not describe 5 things happening at once. LTX-2 will fail.
-- NO FAST CAMERA MOVES: Stick to "static camera", "slow pan left", or "slow push in".
+HOW TO WRITE FOR LTX-2 (RICH DETAIL, SIMPLE ACTION):
+- WRITE LONG, VIVID DESCRIPTIONS: Do not write short summaries. Fill the prompt with rich visual details. Describe textures (fur, skin, fabric), lighting (volumetric rays, rim light, reflections), depth of field, and background elements extensively.
+- KEEP ACTION SIMPLE & FOCUS ON MICRO-MOVEMENTS: To prevent the video from breaking, do not describe chaotic motion. Instead, spend your word count describing subtle things: "eyes blinking slowly," "individual hairs shifting in the breeze," "chest rising with a deep breath," "lips articulating words."
+- PRESERVE DIALOGUE: If the user provides dialogue, include the EXACT full quote. Describe how the character delivers the line.
+- NO OVERLAPPING ACTION: Do not describe 5 different things moving at once. Focus deeply on the main subject.
 
-=== PERFECT OUTPUT EXAMPLES ===
-
-EXAMPLE 1 (For a 3D/Cartoon Image):
-[Style : 3D Animation, detailed textures, soft diffuse sunlight]
-A wide static shot of a park. An old man walks forward slowly. His mouth moves. He raises his right hand. A young boy walks next to him. The boy looks up at the man. The background trees are out of focus.
-[AMBIENT: wind blowing leaves, birds chirping]
-
-EXAMPLE 2 (For a Live Action Image):
-[Style : Photorealistic Live-Action, cinematic lighting, gritty textures]
-A medium shot tracking backward. A cyborg walks forward down a wet street. Rain falls from the sky. Water drips down the cyborg's metal faceplate. Neon lights reflect on the wet pavement. 
-[AMBIENT: heavy rain, distant sirens]
+=== PERFECT OUTPUT EXAMPLE ===
+[Style : 3D Animation, highly detailed fur texture, cinematic volumetric lighting, soft depth of field]
+A breathtakingly detailed close-up shot of an orange tabby cat. The camera remains mostly static, allowing the viewer to absorb the intricate textures of the cat's vibrant orange fur, with individual strands catching the warm, diffuse light coming from the left. The cat's large, glassy green eyes reflect the surrounding room, blinking slowly and deliberately. The background is a beautifully blurred tapestry of cozy bookshelves filled with muted, colorful objects. The cat opens its mouth, its whiskers twitching subtly, and speaks, saying "hi Friends, is everything is good.??". The mouth movements are smooth and precise, syncing perfectly with the words as its ears pivot slightly backward.
+[AMBIENT: gentle acoustic guitar playing softly, quiet room tone, subtle breathing]
 ==============================="""
 
     @staticmethod
@@ -86,7 +78,7 @@ A medium shot tracking backward. A cyborg walks forward down a wet street. Rain 
                     "placeholder": "Describe action... (Keep it very simple for LTX-2)"
                 }),
                 "max_tokens": (["256", "512", "800", "1024", "2048"], {"default": "1024"}),
-                "creativity": (["0.7 - Literal", "0.9 - Balanced", "1.1 - Artistic"], {"default": "0.7 - Literal"}),
+                "creativity": (["0.7 - Literal", "0.9 - Balanced", "1.1 - Artistic"], {"default": "0.9 - Balanced"}),
                 "seed": ("INT", {"default": -1, "min": -1, "max": 0xffffffffffffffff}),
                 "debug_console": ("BOOLEAN", {"default": True}), 
                 "keep_model_loaded": ("BOOLEAN", {"default": True}),
@@ -121,19 +113,14 @@ A medium shot tracking backward. A cyborg walks forward down a wet street. Rain 
         return f"data:image/jpeg;base64,{img_str}"
 
     def _find_absolute_path(self, filename, search_dirs):
-        """Robustly searches for the exact absolute path of the selected model."""
-        # First, try direct join (handles relative paths returned by dropdown)
         for base_path in search_dirs:
             direct_path = os.path.join(base_path, filename)
             if os.path.exists(direct_path):
                 return direct_path
-                
-        # If not found directly, deeply scan all subfolders
         for base_path in search_dirs:
             if os.path.exists(base_path):
                 for root, dirs, files in os.walk(base_path):
                     for file in files:
-                        # Match if the end of the full path matches what the dropdown provided
                         full_path = os.path.join(root, file)
                         if file == filename or full_path.replace("\\", "/").endswith(filename.replace("\\", "/")):
                             return full_path
@@ -151,20 +138,17 @@ A medium shot tracking backward. A cyborg walks forward down a wet street. Rain 
         if "unet" in folder_paths.folder_names_and_paths:
             search_dirs.extend(folder_paths.get_folder_paths("unet"))
 
-        # Robust Deep Scan for files
         llm_path = self._find_absolute_path(llm_name, search_dirs)
         vision_path = self._find_absolute_path(vision_name, search_dirs)
         
-        if not llm_path: raise FileNotFoundError(f"LLM '{llm_name}' not found. Checked folders and subfolders.")
-        if not vision_path: raise FileNotFoundError(f"Vision '{vision_name}' not found. Checked folders and subfolders.")
+        if not llm_path: raise FileNotFoundError(f"LLM '{llm_name}' not found.")
+        if not vision_path: raise FileNotFoundError(f"Vision '{vision_name}' not found.")
         
         if (self.llm is not None and self.loaded_model_path == llm_path and self.loaded_vision_path == vision_path):
             return
 
         self.unload_model()
         print(f"\n[RT-LTX-2] Loading Models into VRAM...")
-        print(f"  -> Text Path: {llm_path}")
-        print(f"  -> Vision Path: {vision_path}")
         
         try:
             self.chat_handler = Llava15ChatHandler(clip_model_path=vision_path)
@@ -240,15 +224,21 @@ A medium shot tracking backward. A cyborg walks forward down a wet street. Rain 
             
         base64_image = self._tensor_to_base64(image)
         token_val = int(max_tokens.split(" - ")[0]) if " - " in max_tokens else int(max_tokens)
-        
         temp = 0.6 if "Literal" in creativity else float(creativity.split(" - ")[0])
         
         duration_secs = max(1, frame_count // 24)
-        pacing_rule = (
-            f"CRITICAL: The target video is {duration_secs} seconds long. "
-            f"Keep the description ULTRA-SIMPLE and literal. Describe ONLY what happens visually. "
-            f"Write exactly 3 to 5 short sentences."
-        )
+        if duration_secs <= 6:
+            pacing_rule = (
+                f"CRITICAL PACING: The video is short ({duration_secs} seconds). "
+                f"Describe ONLY ONE continuous camera shot. Do NOT use cuts. "
+                f"Instead of fast action, write a LONG, highly descriptive paragraph focusing deeply on MICRO-DETAILS: "
+                f"textures, light reflections, micro-expressions, breathing, and precise mouth movements. Make it incredibly vivid and rich."
+            )
+        else:
+            pacing_rule = (
+                f"CRITICAL PACING: The target video is {duration_secs} seconds long. "
+                f"Write a LONG, highly detailed sequence. Describe the textures, lighting, and action in profound, rich detail."
+            )
         
         clean_user_input = user_input.strip()
         is_empty_input = not clean_user_input or "Describe style" in clean_user_input or "Pixar-style" in clean_user_input
@@ -257,15 +247,15 @@ A medium shot tracking backward. A cyborg walks forward down a wet street. Rain 
             f"{pacing_rule}\n\n"
             "REQUIRED OUTPUT FORMAT:\n"
             "Line 1: [Style : <MUST STATE IF 3D ANIMATION, PHOTOREALISTIC, OR 2D ANIME>, <texture, lighting>]\n"
-            "Line 2+: <Ultra-literal, simple scene description>\n"
+            "Line 2+: <Your long, vivid, highly detailed scene description focusing on micro-details>\n"
             "Final Line: [AMBIENT: <soundscape>]\n\n"
             "START IMMEDIATELY with the '[Style : ' tag."
         )
 
         if is_empty_input:
-            final_prompt = f"Analyze the image and write an ultra-literal, simple prompt describing the exact visual mechanics of the scene.\n\n{blueprint}"
+            final_prompt = f"Analyze the image and write a LONG, highly detailed cinematic prompt focusing on textures, lighting, and micro-movements.\n\n{blueprint}"
         else:
-            final_prompt = f"USER REQUEST:\n'{clean_user_input}'\n\nWrite an ultra-literal, simple prompt based on the image and request.\n\n{blueprint}"
+            final_prompt = f"USER REQUEST:\n'{clean_user_input}'\n\nWrite a LONG, highly detailed cinematic prompt based on the image and request. Ensure you include the EXACT dialogue requested.\n\n{blueprint}"
         
         user_content_block = [
             {"type": "text", "text": final_prompt},
