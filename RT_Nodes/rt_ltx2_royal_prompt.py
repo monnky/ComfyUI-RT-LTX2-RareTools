@@ -20,55 +20,75 @@ except ImportError:
 
 class RT_LTX2_RoyalPrompt:
     
-    # ── SYSTEM PROMPT: Built for LTX-2.3 Capabilities ────────────────────────
-    SYSTEM_PROMPT = """You are a master cinematic director and video scene describer for LTX-2.3.
+    # ── SYSTEM PROMPT: Hyper-Literal LTX-2 Optimization ─────────────
+    SYSTEM_PROMPT = """You are an elite video prompt engineer for LTX-2.3. LTX-2 is a fragile AI model that hallucinates if given poetic or complex instructions. 
 
-INSTRUCTIONS:
-1. ANALYZE the image for spatial layout (left/right, foreground/background), textures, and lighting.
-2. BE HIGHLY SPECIFIC & AMBITIOUS: Combine detailed environments with character performance. Use the user's text strictly.
-3. USE VERBS & AVOID STATIC PROMPTS: Describe action. Specify who moves, what moves, how they move, and camera motion (e.g., "The camera tracks right as his coat flaps"). 
-4. TEXTURES & MATERIALS: Explicitly describe fabric types, hair texture, surface finish, environmental wear, and edge detail.
-5. LONG SHOT STRUCTURE (Write as ONE flowing paragraph):
-   - Scene Header: Establish place and time.
-   - Atmosphere & Textures: Tone, lighting, weather.
-   - Camera & Blocking: Smooth motion. Direct the spatial relationships (distance, facing toward/away).
-   - Soft Closing Action: End with a lingering, soft motion (e.g., 'the camera slowly drifts upward').
-6. NO INTERNAL STATES: Describe physical cues instead of internal feelings.
-7. DIALOGUE & AUDIO:
-   - If there is a conversation, preserve speaker names like a screenplay (e.g., Reporter: "Words". Punch: "Words"). DO NOT use bolding or markdown for names.
-   - ALWAYS end with an audio tag describing environmental audio, tone, and intensity. Example: [AMBIENT: low, pulsing energy hum, sharp metallic alarm]
-8. STRICT OUTPUT FORMAT: Write ONLY the prompt paragraph followed by the audio tag. NO conversational filler."""
+CRITICAL FORMATTING RULES:
+1. STYLE TAG FIRST: The absolute first line MUST be: [Style : <3D Animation OR Live-Action>, <texture>, <lighting>].
+2. NO CHATTY FILLER: NEVER start with "Here is the prompt". Start instantly with the [Style : ...] tag.
+3. AMBIENT TAG: The final line MUST be the [AMBIENT: ...] audio tag.
+
+CRITICAL LTX-2 PHYSICS RULES (PREVENT NONSENSE):
+- BE ULTRA-LITERAL: Do not write "he tells a story". Write "his mouth opens and closes, his hand raises". 
+- KEEP MOTION SIMPLE: Limit the scene to 1 or 2 basic, slow movements. (e.g., "The man walks forward. The boy looks up.")
+- NO POETRY: Do not use words like "magical," "whimsical," "epic," or "passionate." Describe literal visual data.
+- NO OVERLAPPING ACTION: Do not describe 5 things happening at once. LTX-2 will fail.
+- NO FAST CAMERA MOVES: Stick to "static camera", "slow pan left", or "slow push in".
+
+=== PERFECT OUTPUT EXAMPLES ===
+
+EXAMPLE 1 (For a 3D/Cartoon Image):
+[Style : 3D Animation, detailed textures, soft diffuse sunlight]
+A wide static shot of a park. An old man walks forward slowly. His mouth moves. He raises his right hand. A young boy walks next to him. The boy looks up at the man. The background trees are out of focus.
+[AMBIENT: wind blowing leaves, birds chirping]
+
+EXAMPLE 2 (For a Live Action Image):
+[Style : Photorealistic Live-Action, cinematic lighting, gritty textures]
+A medium shot tracking backward. A cyborg walks forward down a wet street. Rain falls from the sky. Water drips down the cyborg's metal faceplate. Neon lights reflect on the wet pavement. 
+[AMBIENT: heavy rain, distant sirens]
+==============================="""
 
     @staticmethod
-    def get_gguf_models():
+    def get_supported_models():
         unique_models = set()
-        paths = folder_paths.get_folder_paths("text_encoders")
-        for path in paths:
-            if os.path.exists(path):
-                for file in os.listdir(path):
-                    if file.lower().endswith(".gguf"):
-                        unique_models.add(file)
+        search_dirs = []
+        if "text_encoders" in folder_paths.folder_names_and_paths:
+            search_dirs.extend(folder_paths.get_folder_paths("text_encoders"))
+        if "llm" in folder_paths.folder_names_and_paths:
+            search_dirs.extend(folder_paths.get_folder_paths("llm"))
+        if "unet" in folder_paths.folder_names_and_paths:
+            search_dirs.extend(folder_paths.get_folder_paths("unet"))
+            
+        for base_path in search_dirs:
+            if os.path.exists(base_path):
+                for root, dirs, files in os.walk(base_path):
+                    for file in files:
+                        if file.lower().endswith((".gguf", ".safetensors")):
+                            rel_path = os.path.relpath(os.path.join(root, file), base_path)
+                            rel_path = rel_path.replace("\\", "/")
+                            unique_models.add(rel_path)
+                            
         if not unique_models:
-            return ["No .gguf files found in text_encoders"]
+            return ["No supported models (.gguf or .safetensors) found in text_encoders/llm"]
         return sorted(list(unique_models))
 
     @classmethod
     def INPUT_TYPES(s):
-        valid_ggufs = s.get_gguf_models()
+        valid_models = s.get_supported_models()
         return {
             "required": {
                 "image": ("IMAGE",),
-                "llm_model": (valid_ggufs, {"default": valid_ggufs[0]}), 
-                "vision_model": (valid_ggufs, {"default": valid_ggufs[0]}),
+                "llm_model": (valid_models, {"default": valid_models[0]}), 
+                "vision_model": (valid_models, {"default": valid_models[0]}),
                 "user_input": ("STRING", {
                     "multiline": True,
-                    "default": "Pixar-style animation...",
-                    "placeholder": "Describe style, action, and dialogue..."
+                    "default": "",
+                    "placeholder": "Describe action... (Keep it very simple for LTX-2)"
                 }),
-                "max_tokens": (["256", "512", "800", "1024", "2048"], {"default": "800"}),
-                "creativity": (["0.7 - Literal", "0.9 - Balanced", "1.1 - Artistic"], {"default": "0.9 - Balanced"}),
+                "max_tokens": (["256", "512", "800", "1024", "2048"], {"default": "1024"}),
+                "creativity": (["0.7 - Literal", "0.9 - Balanced", "1.1 - Artistic"], {"default": "0.7 - Literal"}),
                 "seed": ("INT", {"default": -1, "min": -1, "max": 0xffffffffffffffff}),
-                "debug_console": ("BOOLEAN", {"default": True}), # NEW: Debug Toggle
+                "debug_console": ("BOOLEAN", {"default": True}), 
                 "keep_model_loaded": ("BOOLEAN", {"default": True}),
                 "n_ctx": ("INT", {"default": 8192, "min": 2048, "max": 32768}),
                 "frame_count": ("INT", {"default": 120, "min": 24, "max": 960}),
@@ -85,9 +105,9 @@ INSTRUCTIONS:
         self.chat_handler = None
         self.loaded_model_path = None
         self.loaded_vision_path = None
+        self.banned_tokens = {}
 
     def _tensor_to_base64(self, image_tensor):
-        # Robust check to ensure we only grab the first frame if fed a batch
         if len(image_tensor.shape) == 4:
             img = image_tensor[0].cpu().numpy()
         else:
@@ -100,26 +120,51 @@ INSTRUCTIONS:
         img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
         return f"data:image/jpeg;base64,{img_str}"
 
+    def _find_absolute_path(self, filename, search_dirs):
+        """Robustly searches for the exact absolute path of the selected model."""
+        # First, try direct join (handles relative paths returned by dropdown)
+        for base_path in search_dirs:
+            direct_path = os.path.join(base_path, filename)
+            if os.path.exists(direct_path):
+                return direct_path
+                
+        # If not found directly, deeply scan all subfolders
+        for base_path in search_dirs:
+            if os.path.exists(base_path):
+                for root, dirs, files in os.walk(base_path):
+                    for file in files:
+                        # Match if the end of the full path matches what the dropdown provided
+                        full_path = os.path.join(root, file)
+                        if file == filename or full_path.replace("\\", "/").endswith(filename.replace("\\", "/")):
+                            return full_path
+        return None
+
     def load_model(self, llm_name, vision_name, n_ctx):
-        paths = folder_paths.get_folder_paths("text_encoders")
-        llm_path = None
-        vision_path = None
-        for path in paths:
-            potential_llm = os.path.join(path, llm_name)
-            potential_vis = os.path.join(path, vision_name)
-            if os.path.exists(potential_llm): llm_path = potential_llm
-            if os.path.exists(potential_vis): vision_path = potential_vis
+        if llm_name.lower().endswith(".safetensors") or vision_name.lower().endswith(".safetensors"):
+            raise ValueError("SAFETENSORS_ERROR")
+
+        search_dirs = []
+        if "text_encoders" in folder_paths.folder_names_and_paths:
+            search_dirs.extend(folder_paths.get_folder_paths("text_encoders"))
+        if "llm" in folder_paths.folder_names_and_paths:
+            search_dirs.extend(folder_paths.get_folder_paths("llm"))
+        if "unet" in folder_paths.folder_names_and_paths:
+            search_dirs.extend(folder_paths.get_folder_paths("unet"))
+
+        # Robust Deep Scan for files
+        llm_path = self._find_absolute_path(llm_name, search_dirs)
+        vision_path = self._find_absolute_path(vision_name, search_dirs)
         
-        if not llm_path: raise FileNotFoundError(f"LLM '{llm_name}' not found.")
-        if not vision_path: raise FileNotFoundError(f"Vision '{vision_name}' not found.")
+        if not llm_path: raise FileNotFoundError(f"LLM '{llm_name}' not found. Checked folders and subfolders.")
+        if not vision_path: raise FileNotFoundError(f"Vision '{vision_name}' not found. Checked folders and subfolders.")
         
         if (self.llm is not None and self.loaded_model_path == llm_path and self.loaded_vision_path == vision_path):
             return
 
         self.unload_model()
         print(f"\n[RT-LTX-2] Loading Models into VRAM...")
-        print(f"  -> Text: {llm_name}")
-        print(f"  -> Vision: {vision_name}")
+        print(f"  -> Text Path: {llm_path}")
+        print(f"  -> Vision Path: {vision_path}")
         
         try:
             self.chat_handler = Llava15ChatHandler(clip_model_path=vision_path)
@@ -133,8 +178,16 @@ INSTRUCTIONS:
             )
             self.loaded_model_path = llm_path
             self.loaded_vision_path = vision_path
+            
+            banned_strings = ["ASSISTANT:", "Assistant:", "USER:", "User:", "Here is the", "Okay,", "Sure,"]
+            self.banned_tokens = {}
+            for bad_str in banned_strings:
+                tokens = self.llm.tokenize(bad_str.encode('utf-8'), add_bos=False)
+                if len(tokens) > 0:
+                    self.banned_tokens[tokens[0]] = -100.0
+                    
         except Exception as e:
-            print(f"[RT-LTX-2] CRITICAL ERROR during model load: {e}")
+            print(f"[RT-LTX-2] CRITICAL ERROR: {e}")
             self.unload_model()
             raise RuntimeError(f"Load failed: {e}")
 
@@ -147,58 +200,79 @@ INSTRUCTIONS:
         torch.cuda.empty_cache()
 
     def _clean_output(self, text):
-        # Safely remove chatty prefixes without destroying the actual prompt
-        patterns = [
-            r"^Okay, here's a description.*?:",
-            r"^Here's a description.*?:",
-            r"^Here is the prompt.*?:",
-            r"^Sure, here is.*?:",
-            r"REAL TASK:.*", r"USER:.*", r"ACTION:.*", r"RULES:.*", r"\[INSTRUCTION:\]",
-            r"\[SCENE START\]", r"\[SCENE END\]"
-        ]
-        for p in patterns:
-            text = re.sub(p, "", text, flags=re.IGNORECASE | re.MULTILINE)
+        text = re.sub(r"^(Sure|Okay|Here is|Here's).*?:\n+", "", text, flags=re.IGNORECASE | re.MULTILINE)
+        text = re.sub(r"^\s*\**Here is a cinematic.*?\**\s*\n+", "", text, flags=re.IGNORECASE | re.MULTILINE)
+        text = re.sub(r"^\x60\x60\x60(?:text)?\n(.*?)\n\x60\x60\x60$", r"\1", text, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r"\x60\x60\x60[a-z]*\n", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\x60\x60\x60", "", text)
+        text = re.sub(r"\*\*(\[.*?\])\*\*", r"\1", text)
+        
+        ambient_matches = list(re.finditer(r"\[AMBIENT:.*?\]", text, re.IGNORECASE))
+        if ambient_matches:
+            last_match = ambient_matches[-1]
+            text = text[:last_match.end()]
+        else:
+            text = re.sub(r"(ASSISTANT|USER REQUEST|USER:|\[SCENE START\]).*", "", text, flags=re.IGNORECASE | re.DOTALL)
             
-        # Kill Hallucination Loops (If the AI starts talking to itself as the assistant)
-        text = re.sub(r"ASSISTANT:.*", "", text, flags=re.IGNORECASE | re.DOTALL)
-        
         text = text.strip()
-        
-        # Strip surrounding quotes safely
         if text.startswith('"') and text.endswith('"'):
             text = text[1:-1]
+            
+        text = text.strip()
+
+        if "[Style" not in text and "[style" not in text:
+            text = "[Style : highly detailed, accurate to visual reference]\n" + text
+        else:
+            text = re.sub(r"^.*?(\[Style\s*:)", r"\1", text, flags=re.IGNORECASE | re.DOTALL)
             
         return text.strip()
 
     def generate(self, image, llm_model, vision_model, user_input, max_tokens, creativity, seed, debug_console, keep_model_loaded, n_ctx, frame_count):
         
-        if debug_console:
-            print(f"\n" + "="*50)
-            print(f"🚀 [RT-LTX-2] ROYAL PROMPT DIAGNOSTICS START")
-            print(f"==================================================")
-            print(f"📝 USER INPUT:\n{user_input}\n")
-        
-        self.load_model(llm_model, vision_model, n_ctx)
+        try:
+            self.load_model(llm_model, vision_model, n_ctx)
+        except ValueError as e:
+            if str(e) == "SAFETENSORS_ERROR":
+                error_msg = ("[ERROR] You selected a .safetensors model. Please select a `.gguf` file.")
+                return (error_msg, error_msg, frame_count)
+            else:
+                raise e
+            
         base64_image = self._tensor_to_base64(image)
         token_val = int(max_tokens.split(" - ")[0]) if " - " in max_tokens else int(max_tokens)
-        temp = float(creativity.split(" - ")[0]) if " - " in creativity else 0.9
         
-        final_prompt = (
-            f"USER REQUEST:\n"
-            f"'{user_input}'\n\n"
-            f"Use the image as a visual reference. Write a highly specific, action-driven cinematic video prompt based on the LTX-2.3 instructions. "
-            f"Format any dialogue cleanly, and end ONLY with an [AMBIENT: ...] tag."
+        temp = 0.6 if "Literal" in creativity else float(creativity.split(" - ")[0])
+        
+        duration_secs = max(1, frame_count // 24)
+        pacing_rule = (
+            f"CRITICAL: The target video is {duration_secs} seconds long. "
+            f"Keep the description ULTRA-SIMPLE and literal. Describe ONLY what happens visually. "
+            f"Write exactly 3 to 5 short sentences."
         )
+        
+        clean_user_input = user_input.strip()
+        is_empty_input = not clean_user_input or "Describe style" in clean_user_input or "Pixar-style" in clean_user_input
+        
+        blueprint = (
+            f"{pacing_rule}\n\n"
+            "REQUIRED OUTPUT FORMAT:\n"
+            "Line 1: [Style : <MUST STATE IF 3D ANIMATION, PHOTOREALISTIC, OR 2D ANIME>, <texture, lighting>]\n"
+            "Line 2+: <Ultra-literal, simple scene description>\n"
+            "Final Line: [AMBIENT: <soundscape>]\n\n"
+            "START IMMEDIATELY with the '[Style : ' tag."
+        )
+
+        if is_empty_input:
+            final_prompt = f"Analyze the image and write an ultra-literal, simple prompt describing the exact visual mechanics of the scene.\n\n{blueprint}"
+        else:
+            final_prompt = f"USER REQUEST:\n'{clean_user_input}'\n\nWrite an ultra-literal, simple prompt based on the image and request.\n\n{blueprint}"
         
         user_content_block = [
             {"type": "text", "text": final_prompt},
             {"type": "image_url", "image_url": {"url": base64_image}}
         ]
 
-        # Stop Tokens to prevent hallucination loops immediately
-        stop_tokens = ["<end_of_turn>", "<eos>", "<|eot_id|>", "User:", "ASSISTANT:", "Assistant:", "REAL TASK:"]
-
-        print(f"[RT-LTX-2] Generating Prompt...")
+        stop_tokens = ["<end_of_turn>", "<eos>", "<|eot_id|>", "User:", "ASSISTANT:", "Assistant:", "REAL TASK:", "USER REQUEST:", "**USER**", "====="]
 
         try:
             response = self.llm.create_chat_completion(
@@ -211,33 +285,21 @@ INSTRUCTIONS:
                 top_p=0.9,
                 repeat_penalty=1.1,
                 stop=stop_tokens,
+                logit_bias=self.banned_tokens,
                 seed=seed if seed != -1 else None
             )
             
             raw_result = response['choices'][0]['message']['content'].strip()
-            
-            if debug_console:
-                print(f"🤖 RAW LLM OUTPUT (Before Clean):\n{raw_result}\n")
-                
             final_result = self._clean_output(raw_result)
             
-            # Robust Fallback: If LLM output is completely empty, use the user input safely
             if not final_result or final_result == "":
-                print("\n[RT-LTX-2] ⚠️ WARNING: LLM returned an empty string. Falling back to User Input.")
-                final_result = f"{user_input}\n\n[AMBIENT: subtle environmental sounds]"
+                final_result = f"[Style : highly detailed]\n{user_input}\n\n[AMBIENT: subtle sounds]"
 
         except Exception as e:
-            print(f"\n[RT-LTX-2] ❌ CRITICAL GENERATION ERROR: {e}")
-            final_result = f"Error during generation: {e}"
+            final_result = f"Error: {e}"
 
         if not keep_model_loaded:
-            print(f"[RT-LTX-2] Unloading models to free VRAM...")
             self.unload_model()
-
-        if debug_console:
-            print(f"✨ FINAL CLEANED PROMPT (Sent to LTX-2):\n{final_result}")
-            print(f"==================================================")
-            print(f"🏁 [RT-LTX-2] DIAGNOSTICS END\n" + "="*50 + "\n")
 
         return (final_result, final_result, frame_count)
 
