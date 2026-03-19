@@ -6,9 +6,9 @@ Tutorial @ https://www.youtube.com/@raretutor
 ComfyUI custom nodes for LTXV2 model.
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
-requirements
-1) install
-   X:\XXX\ComfyUI_Windows_Portable\ComfyUI\python_embeded\python.exe -m pip install llama-cpp-python
+requirements install
+
+1) X:\XXX\ComfyUI_Windows_Portable\ComfyUI\python_embeded\python.exe -m pip install llama-cpp-python
 
    or
 
