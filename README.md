@@ -5,8 +5,7 @@ Tutorial @ https://www.youtube.com/@raretutor
 
 ComfyUI custom nodes for LTXV2 model.
 
-Gemma Models
-
+------------------------------------------------------------------------------------------------------------------------------------------------
 requirements
 1) install
    X:\XXX\ComfyUI_Windows_Portable\ComfyUI\python_embeded\python.exe -m pip install llama-cpp-python
@@ -14,7 +13,11 @@ requirements
    or
 
    X:\XXX\ComfyUI_Windows_Portable\ComfyUI\python_embeded\python.exe -m pip install https://github.com/JamePeng/llama-cpp-python/releases/download/xxx_xxx.whl
+   
    (wheel from https://github.com/JamePeng/llama-cpp-python/releases/)
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+Gemma Models
 
 https://huggingface.co/unsloth/gemma-3-12b-it-GGUF/blob/main/gemma-3-12b-it-Q4_0.gguf
 
