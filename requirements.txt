@@ -1,1 +1,1 @@
-lama-cpp-python
+llama-cpp-python
