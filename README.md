@@ -1,3 +1,5 @@
+PROMPT ENHANCER UPDATED ON 07.05.2026
+
 ComfyUI-RT-LTX2-RareTools
 Experimental ComfyUI nodes.
 
